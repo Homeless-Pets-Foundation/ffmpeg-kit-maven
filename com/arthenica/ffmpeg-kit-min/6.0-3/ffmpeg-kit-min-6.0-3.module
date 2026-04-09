@@ -1,0 +1,76 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "com.arthenica",
+    "module": "ffmpeg-kit-min",
+    "version": "6.0-3",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.7"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseVariantReleaseApiPublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "com.arthenica",
+          "module": "smart-exception-java",
+          "version": {
+            "requires": "0.2.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "ffmpeg-kit-min-6.0-3.aar",
+          "url": "ffmpeg-kit-min-6.0-3.aar",
+          "size": 36669531,
+          "sha512": "c3dbd71c8c20a4e7bd1a4c9100d44cfd86d3cbc6445d78f3fe1e562a82ebdaac6d59fbec2f1def192cd284c5a51b5567661edbc88009aec8c07156c705cc1284",
+          "sha256": "5f7a4a49213b992ce804b152638ed41d530be3c097cc49acf043f4017552b29e",
+          "sha1": "97cb21f0f8988a56b77625cebdf1b0549910e2d0",
+          "md5": "a083c3626cc8c3858a4a817242c7e501"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseRuntimePublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "com.arthenica",
+          "module": "smart-exception-java",
+          "version": {
+            "requires": "0.2.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "ffmpeg-kit-min-6.0-3.aar",
+          "url": "ffmpeg-kit-min-6.0-3.aar",
+          "size": 36669531,
+          "sha512": "c3dbd71c8c20a4e7bd1a4c9100d44cfd86d3cbc6445d78f3fe1e562a82ebdaac6d59fbec2f1def192cd284c5a51b5567661edbc88009aec8c07156c705cc1284",
+          "sha256": "5f7a4a49213b992ce804b152638ed41d530be3c097cc49acf043f4017552b29e",
+          "sha1": "97cb21f0f8988a56b77625cebdf1b0549910e2d0",
+          "md5": "a083c3626cc8c3858a4a817242c7e501"
+        }
+      ]
+    }
+  ]
+}
