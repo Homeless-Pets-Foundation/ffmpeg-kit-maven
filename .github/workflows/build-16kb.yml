@@ -1,6 +1,8 @@
 name: Build FFmpeg Kit min (16KB page size)
 
 on:
+  push:
+    paths: ['build-trigger.txt']
   workflow_dispatch:
     inputs:
       version:
@@ -22,6 +24,16 @@ jobs:
         with:
           path: maven-repo
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve build version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION=$(cat maven-repo/build-trigger.txt | tr -d '[:space:]')
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          echo "BUILD_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Building version: $VERSION"
 
       - name: Clone ffmpeg-kit source (development branch — has 16KB fix)
         run: |
@@ -106,7 +118,7 @@ jobs:
 
       - name: Prepare Maven artifacts
         run: |
-          VERSION="${{ github.event.inputs.version }}"
+          VERSION="$BUILD_VERSION"
           DEST="maven-repo/com/arthenica/ffmpeg-kit-min/$VERSION"
           mkdir -p "$DEST"
 
@@ -279,7 +291,7 @@ PYEOF
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Add com.arthenica:ffmpeg-kit-min:${{ github.event.inputs.version }} (16KB page size support)
+          git commit -m "Add com.arthenica:ffmpeg-kit-min:$BUILD_VERSION (16KB page size support)
 
 Built from arthenica/ffmpeg-kit development branch (commit 913e5b7).
 - arm64-v8a and x86_64: -Wl,-z,max-page-size=16384 (16KB ELF load segment alignment)
