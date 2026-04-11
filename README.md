@@ -21,6 +21,8 @@ Built from the `development` branch of the archived `arthenica/ffmpeg-kit` sourc
 - **NDK**: r25b (25.2.9519653)
 - **Fixes**: Google Play policy requirement for 16KB page size support (mandatory for Android 15+ devices)
 
+**Last deployed:** 2026-04-11
+
 ## Usage
 
 Add this repository to your Gradle settings (or in Expo, via `expo-build-properties` `extraMavenRepos`):
