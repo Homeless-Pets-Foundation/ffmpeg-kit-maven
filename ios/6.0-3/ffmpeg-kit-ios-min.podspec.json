@@ -4,11 +4,15 @@
   "summary": "FFmpeg Kit (min variant) iOS xcframework self-hosted mirror",
   "description": "Self-hosted mirror of arthenica/ffmpeg-kit ffmpeg-kit-ios-min@6.0 (internal build 6.0-3, source commit 885811cb on the development branch).",
   "homepage": "https://github.com/Homeless-Pets-Foundation/ffmpeg-kit-maven",
-  "license": { "type": "LGPL-3.0" },
+  "license": {
+    "type": "LGPL-3.0"
+  },
   "authors": "arthenica",
-  "platforms": { "ios": "12.1" },
+  "platforms": {
+    "ios": "12.1"
+  },
   "source": {
-    "http": "https://homeless-pets-foundation.github.io/ffmpeg-kit-maven/ios/6.0-3/ffmpeg-kit-min-6.0-3-ios-xcframework.zip",
+    "http": "https://raw.githubusercontent.com/Homeless-Pets-Foundation/ffmpeg-kit-maven/main/ios/6.0-3/ffmpeg-kit-min-6.0-3-ios-xcframework.zip",
     "sha256": "0b3300ef3165e26279df461e8ca8fb1995ecec7c52d49f623f60e700fb7a0155"
   },
   "vendored_frameworks": [
@@ -21,6 +25,16 @@
     "libswresample.xcframework",
     "libswscale.xcframework"
   ],
-  "frameworks": ["AudioToolbox", "AVFoundation", "CoreMedia", "VideoToolbox"],
-  "libraries": ["c++", "bz2", "iconv", "z"]
+  "frameworks": [
+    "AudioToolbox",
+    "AVFoundation",
+    "CoreMedia",
+    "VideoToolbox"
+  ],
+  "libraries": [
+    "c++",
+    "bz2",
+    "iconv",
+    "z"
+  ]
 }
