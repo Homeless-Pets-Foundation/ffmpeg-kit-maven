@@ -58,9 +58,17 @@ jobs:
         run: |
           chmod +x ios.sh
           # --xcframework emits xcframeworks under prebuilt/bundle-apple-xcframework-ios-<min_sdk>/
-          # No --enable-* flags → min variant (same as arthenica's published ffmpeg-kit-ios-min)
-          # --disable-arm64-simulator=no to ensure arm64 simulator slice (needed for Apple Silicon Macs)
-          ./ios.sh --xcframework 2>&1 | tee /tmp/ios-build.log
+          # No --enable-* flags → min variant (same as arthenica's published ffmpeg-kit-ios-min).
+          # Disable 32-bit archs (armv7/armv7s/i386) — unsupported by Xcode 14+ for iOS.
+          # Disable mac-catalyst slices — VetSOAP is iOS-only, catalyst is dead weight.
+          # arm64-simulator is kept (default on) so Apple Silicon Mac simulators work.
+          ./ios.sh --xcframework \
+            --disable-armv7 \
+            --disable-armv7s \
+            --disable-i386 \
+            --disable-arm64-mac-catalyst \
+            --disable-x86-64-mac-catalyst \
+            2>&1 | tee /tmp/ios-build.log
           echo "=== build.log tail ==="
           tail -80 build.log || true
 
