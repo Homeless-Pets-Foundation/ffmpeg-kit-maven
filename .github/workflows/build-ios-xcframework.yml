@@ -125,12 +125,16 @@ jobs:
           SHA256=$(cat "${ZIP_PATH}.sha256")
           ZIP_URL="https://homeless-pets-foundation.github.io/ffmpeg-kit-maven/ios/${BUILD_VERSION}/${ZIP_NAME}"
 
+          # Pod version is intentionally "6.0" (not BUILD_VERSION) so this podspec
+          # satisfies ffmpeg-kit-react-native's `s.dependency 'ffmpeg-kit-ios-min', "6.0"`
+          # requirement unchanged. BUILD_VERSION identifies which internal build
+          # produced the xcframework and shows up in the description only.
           cat > "$IOS_DEST/ffmpeg-kit-ios-min.podspec.json" <<JSON
           {
             "name": "ffmpeg-kit-ios-min",
-            "version": "${BUILD_VERSION}",
+            "version": "6.0",
             "summary": "FFmpeg Kit (min variant) iOS xcframework self-hosted mirror",
-            "description": "Self-hosted mirror of arthenica/ffmpeg-kit ffmpeg-kit-ios-min@6.0 — built from ${FFMPEG_KIT_REF} (${FFMPEG_KIT_COMMIT}).",
+            "description": "Self-hosted mirror of arthenica/ffmpeg-kit ffmpeg-kit-ios-min@6.0 — built ${BUILD_VERSION} from ${FFMPEG_KIT_REF} (${FFMPEG_KIT_COMMIT}).",
             "homepage": "https://github.com/Homeless-Pets-Foundation/ffmpeg-kit-maven",
             "license": { "type": "LGPL-3.0" },
             "authors": "arthenica",
