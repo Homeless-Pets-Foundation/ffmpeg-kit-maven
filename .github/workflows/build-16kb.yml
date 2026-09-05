@@ -24,21 +24,28 @@ jobs:
         with:
           path: maven-repo
           token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
 
       - name: Resolve build version
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
             VERSION=$(cat maven-repo/build-trigger.txt | tr -d '[:space:]')
           else
-            VERSION="${{ github.event.inputs.version }}"
+            VERSION="$REQUESTED_VERSION"
           fi
+          [[ "$VERSION" =~ ^[0-9][A-Za-z0-9._-]*$ ]] || { echo 'Invalid Maven version'; exit 1; }
           echo "BUILD_VERSION=$VERSION" >> $GITHUB_ENV
           echo "Building version: $VERSION"
 
-      - name: Clone ffmpeg-kit source (development branch — has 16KB fix)
+      - name: Clone pinned ffmpeg-kit source with the 16KB fix
         run: |
-          git clone --depth=1 --branch development \
-            https://github.com/arthenica/ffmpeg-kit.git ffmpeg-kit-src
+          git init ffmpeg-kit-src
+          git -C ffmpeg-kit-src remote add origin https://github.com/arthenica/ffmpeg-kit.git
+          git -C ffmpeg-kit-src fetch --depth=1 origin 913e5b78e4f37e19e11a0bdbb075d6f65d672868
+          git -C ffmpeg-kit-src checkout --detach FETCH_HEAD
+          test "$(git -C ffmpeg-kit-src rev-parse HEAD)" = 913e5b78e4f37e19e11a0bdbb075d6f65d672868
 
       - name: Verify 16KB patch is present
         run: |
@@ -110,11 +117,7 @@ jobs:
 
           # Verify 16KB alignment in arm64-v8a libraries
           unzip -q "$AAR" -d /tmp/aar_verify
-          for SO in /tmp/aar_verify/jni/arm64-v8a/*.so; do
-            ALIGN=$(readelf -l "$SO" 2>/dev/null | grep -oP 'Align\s+\K0x[0-9a-f]+' | head -1)
-            echo "  $SO: align=$ALIGN"
-          done
-          echo "Expected 0x4000 (16384) for arm64-v8a libraries"
+          python3 ../maven-repo/scripts/maven-artifacts.py verify /tmp/aar_verify
 
       - name: Prepare Maven artifacts
         run: |
@@ -285,17 +288,22 @@ jobs:
       - name: List generated artifacts
         run: ls -lh "$ARTIFACT_DEST/"
 
+      - name: Update Maven repository metadata and checksums
+        run: python3 maven-repo/scripts/maven-artifacts.py metadata maven-repo/com/arthenica/ffmpeg-kit-min "$ARTIFACT_VERSION"
+
       - name: Commit and push new version to maven repo
         working-directory: maven-repo
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -m "Add com.arthenica:ffmpeg-kit-min:$BUILD_VERSION (16KB page size support)
 
-          Built from arthenica/ffmpeg-kit development branch (commit 913e5b7).
+          Built from arthenica/ffmpeg-kit commit 913e5b78e4f37e19e11a0bdbb075d6f65d672868.
           - arm64-v8a and x86_64: -Wl,-z,max-page-size=16384 (16KB ELF load segment alignment)
           - NDK r25b (25.2.9519653)
           - Fixes Google Play 16KB page size policy requirement"
-          git push
+          git -c credential.helper= -c 'credential.helper=!f() { echo username=x-access-token; echo "password=$GH_TOKEN"; }; f' push
           echo "Pushed to main — GitHub Pages will redeploy automatically"
