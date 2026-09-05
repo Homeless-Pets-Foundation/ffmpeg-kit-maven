@@ -35,7 +35,7 @@ jobs:
           else
             VERSION="$REQUESTED_VERSION"
           fi
-          [[ "$VERSION" =~ ^[0-9][A-Za-z0-9._-]*$ ]] || { echo 'Invalid Maven version'; exit 1; }
+          [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+)*(-[0-9]+)?$ ]] || { echo 'Expected a numeric release such as 6.0-3'; exit 1; }
           echo "BUILD_VERSION=$VERSION" >> $GITHUB_ENV
           echo "Building version: $VERSION"
 
