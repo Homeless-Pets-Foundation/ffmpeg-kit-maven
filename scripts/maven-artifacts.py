@@ -4,6 +4,7 @@ import datetime as dt
 import hashlib
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -65,10 +66,35 @@ def update_metadata(directory, version):
         path.with_suffix(path.suffix + '.' + algorithm).write_text(hashlib.new(algorithm, path.read_bytes()).hexdigest() + '\n')
 
 
+def stage_artifacts(incoming, directory, version):
+    release_key(version)
+    incoming, directory = Path(incoming), Path(directory)
+    names = {f'ffmpeg-kit-min-{version}.{extension}' for extension in ['aar', 'pom', 'module']}
+    algorithms = ['md5', 'sha1', 'sha256', 'sha512']
+    expected = names | {name + '.' + algorithm for name in names for algorithm in algorithms}
+    if {p.name for p in incoming.iterdir()} != expected:
+        raise ValueError('Candidate must contain exactly the versioned Maven files and checksums')
+    if any((incoming / name).is_symlink() or not (incoming / name).is_file() for name in expected):
+        raise ValueError('Candidate entries must be regular files')
+    for name in names:
+        for algorithm in algorithms:
+            if (incoming / (name + '.' + algorithm)).read_text().strip() != hashlib.new(algorithm, (incoming / name).read_bytes()).hexdigest():
+                raise ValueError(f'Candidate checksum mismatch: {name}.{algorithm}')
+    target = directory / version
+    if target.exists():
+        raise ValueError('Refusing to overwrite an existing Maven release')
+    target.mkdir()
+    for name in sorted(expected):
+        shutil.copyfile(incoming / name, target / name)
+    update_metadata(directory, version)
+
+
 if __name__ == '__main__':
     if len(sys.argv) == 3 and sys.argv[1] == 'verify':
         verify_alignment(sys.argv[2])
     elif len(sys.argv) == 4 and sys.argv[1] == 'metadata':
         update_metadata(sys.argv[2], sys.argv[3])
+    elif len(sys.argv) == 5 and sys.argv[1] == 'stage':
+        stage_artifacts(sys.argv[2], sys.argv[3], sys.argv[4])
     else:
-        sys.exit('Usage: maven-artifacts.py verify EXTRACTED_AAR | metadata ARTIFACT_DIRECTORY VERSION')
+        sys.exit('Usage: maven-artifacts.py verify EXTRACTED_AAR | metadata ARTIFACT_DIRECTORY VERSION | stage INCOMING ARTIFACT_DIRECTORY VERSION')

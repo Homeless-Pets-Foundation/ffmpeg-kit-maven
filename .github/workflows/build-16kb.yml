@@ -11,12 +11,14 @@ on:
         default: '6.0-3'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    outputs:
+      version: ${{ steps.version.outputs.version }}
 
     steps:
       - name: Checkout maven repo
@@ -27,6 +29,7 @@ jobs:
           persist-credentials: false
 
       - name: Resolve build version
+        id: version
         env:
           REQUESTED_VERSION: ${{ inputs.version }}
         run: |
@@ -37,6 +40,7 @@ jobs:
           fi
           [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+)*(-[0-9]+)?$ ]] || { echo 'Expected a numeric release such as 6.0-3'; exit 1; }
           echo "BUILD_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION"
 
       - name: Clone pinned ffmpeg-kit source with the 16KB fix
@@ -288,22 +292,58 @@ jobs:
       - name: List generated artifacts
         run: ls -lh "$ARTIFACT_DEST/"
 
-      - name: Update Maven repository metadata and checksums
-        run: python3 maven-repo/scripts/maven-artifacts.py metadata maven-repo/com/arthenica/ffmpeg-kit-min "$ARTIFACT_VERSION"
+      - name: Upload candidate Maven files
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: maven-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.ARTIFACT_DEST }}
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish Maven artifacts
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      # A separate runner prevents native build code from planting Git hooks,
+      # changing Git configuration, or altering the publisher's executables.
+      - name: Checkout clean publication revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          path: maven-repo
+          persist-credentials: false
+
+      - name: Download candidate Maven files
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: maven-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/maven-candidate
+
+      - name: Validate and stage data-only Maven files
+        env:
+          BUILD_VERSION: ${{ needs.build.outputs.version }}
+        run: python3 maven-repo/scripts/maven-artifacts.py stage "$RUNNER_TEMP/maven-candidate" maven-repo/com/arthenica/ffmpeg-kit-min "$BUILD_VERSION"
 
       - name: Commit and push new version to maven repo
         working-directory: maven-repo
         env:
           GH_TOKEN: ${{ github.token }}
+          BUILD_VERSION: ${{ needs.build.outputs.version }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Add com.arthenica:ffmpeg-kit-min:$BUILD_VERSION (16KB page size support)
+          git add -- com/arthenica/ffmpeg-kit-min
+          git -c core.hooksPath=/dev/null commit -m "Add com.arthenica:ffmpeg-kit-min:$BUILD_VERSION (16KB page size support)
 
           Built from arthenica/ffmpeg-kit commit 913e5b78e4f37e19e11a0bdbb075d6f65d672868.
           - arm64-v8a and x86_64: -Wl,-z,max-page-size=16384 (16KB ELF load segment alignment)
           - NDK r25b (25.2.9519653)
           - Fixes Google Play 16KB page size policy requirement"
-          git -c credential.helper= -c 'credential.helper=!f() { echo username=x-access-token; echo "password=$GH_TOKEN"; }; f' push
+          git -c core.hooksPath=/dev/null -c credential.helper= -c 'credential.helper=!f() { echo username=x-access-token; echo "password=$GH_TOKEN"; }; f' push origin HEAD:main
           echo "Pushed to main — GitHub Pages will redeploy automatically"

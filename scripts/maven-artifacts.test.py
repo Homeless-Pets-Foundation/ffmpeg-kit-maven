@@ -52,6 +52,38 @@ class ArtifactChecks(unittest.TestCase):
             with self.assertRaises(ValueError):
                 M['update_metadata'](root, '../../invalid')
 
+    def test_candidate_cannot_stage_hooks_or_overwrite_releases(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            incoming, repository = root / 'candidate', root / 'repository'
+            incoming.mkdir()
+            repository.mkdir()
+            (repository / 'maven-metadata.xml').write_text('<metadata><groupId>com.arthenica</groupId><artifactId>ffmpeg-kit-min</artifactId><versioning><latest>6.0-3</latest><release>6.0-3</release><versions><version>6.0-3</version></versions></versioning></metadata>')
+            for extension in ['aar', 'pom', 'module']:
+                name = 'ffmpeg-kit-min-6.0-4.' + extension
+                (incoming / name).write_bytes(b'candidate bytes')
+                for algorithm in ['md5', 'sha1', 'sha256', 'sha512']:
+                    (incoming / (name + '.' + algorithm)).write_text(hashlib.new(algorithm, b'candidate bytes').hexdigest())
+            (incoming / '.git').mkdir()
+            with self.assertRaises(ValueError):
+                M['stage_artifacts'](incoming, repository, '6.0-4')
+            (incoming / '.git').rmdir()
+            aar = incoming / 'ffmpeg-kit-min-6.0-4.aar'
+            aar.unlink()
+            aar.symlink_to('/etc/passwd')
+            with self.assertRaises(ValueError):
+                M['stage_artifacts'](incoming, repository, '6.0-4')
+            aar.unlink()
+            aar.write_bytes(b'tampered')
+            with self.assertRaises(ValueError):
+                M['stage_artifacts'](incoming, repository, '6.0-4')
+            self.assertFalse((repository / '6.0-4').exists())
+            aar.write_bytes(b'candidate bytes')
+            M['stage_artifacts'](incoming, repository, '6.0-4')
+            self.assertEqual(ET.parse(repository / 'maven-metadata.xml').findtext('versioning/release'), '6.0-4')
+            with self.assertRaisesRegex(ValueError, 'overwrite'):
+                M['stage_artifacts'](incoming, repository, '6.0-4')
+
 
 if __name__ == '__main__':
     unittest.main()
