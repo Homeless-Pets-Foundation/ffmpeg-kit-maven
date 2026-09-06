@@ -34,7 +34,7 @@ jobs:
           REQUESTED_VERSION: ${{ inputs.version }}
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
-            VERSION=$(cat maven-repo/build-trigger.txt | tr -d '[:space:]')
+            VERSION=$(head -n 1 maven-repo/build-trigger.txt | tr -d '[:space:]')
           else
             VERSION="$REQUESTED_VERSION"
           fi

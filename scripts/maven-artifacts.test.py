@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 import hashlib
+import os
 from pathlib import Path
 import runpy
+import subprocess
 import tempfile
+import textwrap
 import unittest
 from unittest.mock import patch
 import xml.etree.ElementTree as ET
@@ -11,6 +14,30 @@ M = runpy.run_path(str(Path(__file__).with_name('maven-artifacts.py')))
 
 
 class ArtifactChecks(unittest.TestCase):
+    def test_workflow_version_ignores_trigger_comment(self):
+        workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/build-16kb.yml').read_text()
+        step = workflow.split('      - name: Resolve build version\n', 1)[1].split('\n      - name:', 1)[0]
+        script = textwrap.dedent(step.split('        run: |\n', 1)[1])
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / 'maven-repo').mkdir()
+            for event, value, expected in [
+                ('push', '6.0-3\n# trigger Thu Apr 9 2026\n', '6.0-3'),
+                ('push', '6.0-4', '6.0-4'),
+                ('push', '\n# trigger\n', None),
+                ('push', '../../bad\n# trigger\n', None),
+                ('workflow_dispatch', '6.0-5', '6.0-5'),
+                ('workflow_dispatch', '$(touch injected)', None),
+            ]:
+                (root / 'maven-repo/build-trigger.txt').write_text(value)
+                output = root / 'output'
+                output.write_text('')
+                env = {**os.environ, 'REQUESTED_VERSION': value, 'GITHUB_ENV': str(root / 'env'), 'GITHUB_OUTPUT': str(output)}
+                result = subprocess.run(['bash', '-euo', 'pipefail', '-c', script.replace('${{ github.event_name }}', event)], cwd=root, env=env, capture_output=True, text=True)
+                self.assertEqual(result.returncode == 0, expected is not None, (event, value, result.stderr))
+                self.assertEqual(output.read_text(), f'version={expected}\n' if expected else '')
+                self.assertFalse((root / 'injected').exists())
+
     def test_load_rows_and_metadata(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
