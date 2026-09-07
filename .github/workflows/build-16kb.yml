@@ -153,46 +153,46 @@ jobs:
         run: |
           VERSION="$ARTIFACT_VERSION"
           cat > "$ARTIFACT_DEST/ffmpeg-kit-min-$VERSION.pom" << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <!-- do_not_remove: published-with-gradle-metadata -->
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>com.arthenica</groupId>
-  <artifactId>ffmpeg-kit-min</artifactId>
-  <version>$VERSION</version>
-  <packaging>aar</packaging>
-  <name>ffmpeg-kit-min</name>
-  <description>Includes FFmpeg without any external libraries enabled. Built with 16KB page size alignment (-Wl,-z,max-page-size=16384) on Android NDK r25b.</description>
-  <url>https://github.com/arthenica/ffmpeg-kit</url>
-  <licenses>
-    <license>
-      <name>GNU Lesser General Public License, Version 3</name>
-      <url>https://www.gnu.org/licenses/lgpl-3.0.txt</url>
-    </license>
-  </licenses>
-  <developers>
-    <developer>
-      <id>arthenica</id>
-      <name>ARTHENICA</name>
-      <email>open-source@arthenica.com</email>
-    </developer>
-  </developers>
-  <scm>
-    <connection>https://github.com/arthenica/ffmpeg-kit.git</connection>
-    <developerConnection>https://github.com/arthenica/ffmpeg-kit.git</developerConnection>
-    <url>https://github.com/arthenica/ffmpeg-kit</url>
-  </scm>
-  <dependencies>
-    <dependency>
-      <groupId>com.arthenica</groupId>
-      <artifactId>smart-exception-java</artifactId>
-      <version>0.2.1</version>
-      <scope>compile</scope>
-    </dependency>
-  </dependencies>
-</project>
-EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <!-- do_not_remove: published-with-gradle-metadata -->
+            <modelVersion>4.0.0</modelVersion>
+            <groupId>com.arthenica</groupId>
+            <artifactId>ffmpeg-kit-min</artifactId>
+            <version>$VERSION</version>
+            <packaging>aar</packaging>
+            <name>ffmpeg-kit-min</name>
+            <description>Includes FFmpeg without any external libraries enabled. Built with 16KB page size alignment (-Wl,-z,max-page-size=16384) on Android NDK r25b.</description>
+            <url>https://github.com/arthenica/ffmpeg-kit</url>
+            <licenses>
+              <license>
+                <name>GNU Lesser General Public License, Version 3</name>
+                <url>https://www.gnu.org/licenses/lgpl-3.0.txt</url>
+              </license>
+            </licenses>
+            <developers>
+              <developer>
+                <id>arthenica</id>
+                <name>ARTHENICA</name>
+                <email>open-source@arthenica.com</email>
+              </developer>
+            </developers>
+            <scm>
+              <connection>https://github.com/arthenica/ffmpeg-kit.git</connection>
+              <developerConnection>https://github.com/arthenica/ffmpeg-kit.git</developerConnection>
+              <url>https://github.com/arthenica/ffmpeg-kit</url>
+            </scm>
+            <dependencies>
+              <dependency>
+                <groupId>com.arthenica</groupId>
+                <artifactId>smart-exception-java</artifactId>
+                <version>0.2.1</version>
+                <scope>compile</scope>
+              </dependency>
+            </dependencies>
+          </project>
+          EOF
 
           # POM checksums
           cd "$ARTIFACT_DEST"
@@ -206,73 +206,73 @@ EOF
         run: |
           VERSION="$ARTIFACT_VERSION"
           python3 - <<PYEOF
-import json, os
+          import json, os
 
-version    = os.environ["ARTIFACT_VERSION"]
-size       = int(os.environ["ARTIFACT_SIZE"])
-sha512     = os.environ["ARTIFACT_SHA512"]
-sha256     = os.environ["ARTIFACT_SHA256"]
-sha1       = os.environ["ARTIFACT_SHA1"]
-md5        = os.environ["ARTIFACT_MD5"]
-dest       = os.environ["ARTIFACT_DEST"]
+          version    = os.environ["ARTIFACT_VERSION"]
+          size       = int(os.environ["ARTIFACT_SIZE"])
+          sha512     = os.environ["ARTIFACT_SHA512"]
+          sha256     = os.environ["ARTIFACT_SHA256"]
+          sha1       = os.environ["ARTIFACT_SHA1"]
+          md5        = os.environ["ARTIFACT_MD5"]
+          dest       = os.environ["ARTIFACT_DEST"]
 
-aar_name = f"ffmpeg-kit-min-{version}.aar"
+          aar_name = f"ffmpeg-kit-min-{version}.aar"
 
-dep = {
-    "group": "com.arthenica",
-    "module": "smart-exception-java",
-    "version": {"requires": "0.2.1"}
-}
-file_entry = {
-    "name": aar_name,
-    "url": aar_name,
-    "size": size,
-    "sha512": sha512,
-    "sha256": sha256,
-    "sha1": sha1,
-    "md5": md5,
-}
+          dep = {
+              "group": "com.arthenica",
+              "module": "smart-exception-java",
+              "version": {"requires": "0.2.1"}
+          }
+          file_entry = {
+              "name": aar_name,
+              "url": aar_name,
+              "size": size,
+              "sha512": sha512,
+              "sha256": sha256,
+              "sha1": sha1,
+              "md5": md5,
+          }
 
-module = {
-    "formatVersion": "1.1",
-    "component": {
-        "group": "com.arthenica",
-        "module": "ffmpeg-kit-min",
-        "version": version,
-        "attributes": {"org.gradle.status": "release"}
-    },
-    "createdBy": {"gradle": {"version": "8.3"}},
-    "variants": [
-        {
-            "name": "releaseVariantReleaseApiPublication",
-            "attributes": {
-                "org.gradle.category": "library",
-                "org.gradle.dependency.bundling": "external",
-                "org.gradle.libraryelements": "aar",
-                "org.gradle.usage": "java-api"
-            },
-            "dependencies": [dep],
-            "files": [file_entry]
-        },
-        {
-            "name": "releaseVariantReleaseRuntimePublication",
-            "attributes": {
-                "org.gradle.category": "library",
-                "org.gradle.dependency.bundling": "external",
-                "org.gradle.libraryelements": "aar",
-                "org.gradle.usage": "java-runtime"
-            },
-            "dependencies": [dep],
-            "files": [file_entry]
-        }
-    ]
-}
+          module = {
+              "formatVersion": "1.1",
+              "component": {
+                  "group": "com.arthenica",
+                  "module": "ffmpeg-kit-min",
+                  "version": version,
+                  "attributes": {"org.gradle.status": "release"}
+              },
+              "createdBy": {"gradle": {"version": "8.3"}},
+              "variants": [
+                  {
+                      "name": "releaseVariantReleaseApiPublication",
+                      "attributes": {
+                          "org.gradle.category": "library",
+                          "org.gradle.dependency.bundling": "external",
+                          "org.gradle.libraryelements": "aar",
+                          "org.gradle.usage": "java-api"
+                      },
+                      "dependencies": [dep],
+                      "files": [file_entry]
+                  },
+                  {
+                      "name": "releaseVariantReleaseRuntimePublication",
+                      "attributes": {
+                          "org.gradle.category": "library",
+                          "org.gradle.dependency.bundling": "external",
+                          "org.gradle.libraryelements": "aar",
+                          "org.gradle.usage": "java-runtime"
+                      },
+                      "dependencies": [dep],
+                      "files": [file_entry]
+                  }
+              ]
+          }
 
-out_path = os.path.join(dest, f"ffmpeg-kit-min-{version}.module")
-with open(out_path, "w") as f:
-    json.dump(module, f, indent=2)
-print(f"Wrote {out_path}")
-PYEOF
+          out_path = os.path.join(dest, f"ffmpeg-kit-min-{version}.module")
+          with open(out_path, "w") as f:
+              json.dump(module, f, indent=2)
+          print(f"Wrote {out_path}")
+          PYEOF
 
           # Module checksums
           cd "$ARTIFACT_DEST"
@@ -293,9 +293,9 @@ PYEOF
           git add -A
           git commit -m "Add com.arthenica:ffmpeg-kit-min:$BUILD_VERSION (16KB page size support)
 
-Built from arthenica/ffmpeg-kit development branch (commit 913e5b7).
-- arm64-v8a and x86_64: -Wl,-z,max-page-size=16384 (16KB ELF load segment alignment)
-- NDK r25b (25.2.9519653)
-- Fixes Google Play 16KB page size policy requirement"
+          Built from arthenica/ffmpeg-kit development branch (commit 913e5b7).
+          - arm64-v8a and x86_64: -Wl,-z,max-page-size=16384 (16KB ELF load segment alignment)
+          - NDK r25b (25.2.9519653)
+          - Fixes Google Play 16KB page size policy requirement"
           git push
           echo "Pushed to main — GitHub Pages will redeploy automatically"
