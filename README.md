@@ -51,11 +51,12 @@ For Expo managed workflow:
 
 Use the **Build FFmpeg Kit min (16KB page size)** GitHub Actions workflow (`.github/workflows/build-16kb.yml`) to produce new versions. Trigger it manually via `workflow_dispatch` with a version input. The workflow:
 
-1. Clones `arthenica/ffmpeg-kit` at the `development` branch
+1. Fetches the reviewed `arthenica/ffmpeg-kit` commit and pinned native dependencies
 2. Installs Android NDK r25b
 3. Builds the `min` variant via `./android.sh`
 4. Generates all Maven metadata (POM, checksums, Gradle module file)
-5. Commits the new version directory and pushes to this repo
+5. On main, validates the candidate again in a clean job and opens a draft release PR; branch test builds only upload the candidate.
+6. A maintainer reviews the draft, approves its workflow runs if GitHub displays the approval banner, and marks it ready before merging through existing protection. Only that merge publishes the Maven version. GitHub requires approval for [PR runs created with `GITHUB_TOKEN`](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
 
 ## License
 
