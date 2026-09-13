@@ -75,8 +75,9 @@ jobs:
         run: |
           # Install command-line tools
           mkdir -p $HOME/android-sdk/cmdline-tools
-          curl -o /tmp/cmdline-tools.zip \
+          curl --fail --location --retry 3 -o /tmp/cmdline-tools.zip \
             "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+          echo '2d2d50857e4eb553af5a6dc3ad507a17adf43d115264b1afc116f95c92e5e258  /tmp/cmdline-tools.zip' | sha256sum --check
           unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools-extracted
           mv /tmp/cmdline-tools-extracted/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
           echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
