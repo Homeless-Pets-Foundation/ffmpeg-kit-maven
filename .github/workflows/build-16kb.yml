@@ -51,6 +51,22 @@ jobs:
           git -C ffmpeg-kit-src checkout --detach FETCH_HEAD
           test "$(git -C ffmpeg-kit-src rev-parse HEAD)" = 913e5b78e4f37e19e11a0bdbb075d6f65d672868
 
+      - name: Fetch pinned native dependencies
+        working-directory: ffmpeg-kit-src
+        run: |
+          while read -r repository directory revision; do
+            git init "$directory"
+            git -C "$directory" remote add origin "https://github.com/arthenica/$repository.git"
+            git -C "$directory" fetch --depth=1 origin "$revision"
+            git -C "$directory" checkout --detach FETCH_HEAD
+            test "$(git -C "$directory" rev-parse HEAD)" = "$revision"
+          done <<'SOURCES'
+          FFmpeg src/ffmpeg b1a4534186ca51b0457579fc05a5739eb2cc45cd
+          cpu_features src/cpu-features ba4bffa86cbb5456bdb34426ad22b9551278e2c0
+          gnu-config .tmp/source/config 805517123cbfe33d17c989a18e78c5789fab0437
+          SOURCES
+          echo 'distributionSha256Sum=544c35d6bd849ae8a5ed0bcea39ba677dc40f49df7d1835561582da2009b961d' >> android/gradle/wrapper/gradle-wrapper.properties
+
       - name: Verify 16KB patch is present
         run: |
           grep "max-page-size=16384" ffmpeg-kit-src/scripts/function-android.sh
