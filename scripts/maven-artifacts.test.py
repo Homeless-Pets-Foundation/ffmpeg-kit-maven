@@ -18,6 +18,27 @@ M = runpy.run_path(str(Path(__file__).with_name('maven-artifacts.py')))
 
 
 class ArtifactChecks(unittest.TestCase):
+    def test_release_uses_a_draft_pr_and_preserves_main_protection(self):
+        root = Path(__file__).resolve().parents[1]
+        workflow = (root / '.github/workflows/build-16kb.yml').read_text()
+        script = textwrap.dedent(workflow.split('      - name: Prepare protected release PR\n', 1)[1].split('        run: |\n', 1)[1])
+        self.assertIn('ready_for_review', (root / '.github/workflows/verify.yml').read_text())
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            for name in ['git', 'gh']:
+                command = directory / name
+                command.write_text('#!/bin/bash\nprintf "%s\\n" "$*" >> "$COMMAND_LOG"\n')
+                command.chmod(0o755)
+            log = directory / 'commands'
+            env = {**os.environ, 'PATH': str(directory) + ':' + os.environ['PATH'],
+                   'COMMAND_LOG': str(log), 'RUNNER_TEMP': str(directory),
+                   'BUILD_VERSION': '6.0-4', 'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '1'}
+            subprocess.run(['bash', '-euo', 'pipefail', '-c', script], cwd=directory, env=env, check=True)
+            calls = log.read_text()
+            self.assertNotIn('HEAD:main', calls)
+            self.assertIn('push origin HEAD:refs/heads/release/maven-6.0-4-123-1', calls)
+            self.assertIn('pr create --draft --base main --head release/maven-6.0-4-123-1', calls)
+
     def test_workflow_version_ignores_trigger_comment(self):
         workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/build-16kb.yml').read_text()
         step = workflow.split('      - name: Resolve build version\n', 1)[1].split('\n      - name:', 1)[0]

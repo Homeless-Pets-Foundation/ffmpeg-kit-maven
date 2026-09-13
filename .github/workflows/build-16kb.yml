@@ -333,7 +333,7 @@ jobs:
           retention-days: 1
 
   publish:
-    name: Publish Maven artifacts
+    name: Prepare Maven release PR
     needs: build
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -341,6 +341,7 @@ jobs:
     permissions:
       actions: read
       contents: write
+      pull-requests: write
     steps:
       # A separate runner prevents native build code from planting Git hooks,
       # changing Git configuration, or altering the publisher's executables.
@@ -362,12 +363,14 @@ jobs:
           BUILD_VERSION: ${{ needs.build.outputs.version }}
         run: python3 maven-repo/scripts/maven-artifacts.py stage "$RUNNER_TEMP/maven-candidate" maven-repo/com/arthenica/ffmpeg-kit-min "$BUILD_VERSION"
 
-      - name: Commit and push new version to maven repo
+      - name: Prepare protected release PR
         working-directory: maven-repo
         env:
           GH_TOKEN: ${{ github.token }}
           BUILD_VERSION: ${{ needs.build.outputs.version }}
         run: |
+          set -euo pipefail
+          branch="release/maven-$BUILD_VERSION-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -- com/arthenica/ffmpeg-kit-min
@@ -377,5 +380,11 @@ jobs:
           - arm64-v8a and x86_64: -Wl,-z,max-page-size=16384 (16KB ELF load segment alignment)
           - NDK r25b (25.2.9519653)
           - Fixes Google Play 16KB page size policy requirement"
-          git -c core.hooksPath=/dev/null -c credential.helper= -c 'credential.helper=!f() { echo username=x-access-token; echo "password=$GH_TOKEN"; }; f' push origin HEAD:main
-          echo "Pushed to main — GitHub Pages will redeploy automatically"
+          git -c core.hooksPath=/dev/null -c credential.helper= -c 'credential.helper=!f() { echo username=x-access-token; echo "password=$GH_TOKEN"; }; f' push origin "HEAD:refs/heads/$branch"
+          cat > "$RUNNER_TEMP/release-pr.md" <<'BODY'
+          Prepared from the verified native build and validated Maven candidate.
+
+          Mark this draft ready for review to trigger Verify, then merge through normal protection to publish. GitHub suppresses pull_request events created with GITHUB_TOKEN, so this workflow deliberately leaves the release in draft. No Maven version is live until the PR merges.
+          BODY
+          gh pr create --draft --base main --head "$branch" \
+            --title "Release ffmpeg-kit-min $BUILD_VERSION" --body-file "$RUNNER_TEMP/release-pr.md"
