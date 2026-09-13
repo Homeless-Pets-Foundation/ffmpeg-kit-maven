@@ -114,13 +114,24 @@ jobs:
 
       - name: Build ffmpeg-kit min variant
         working-directory: ffmpeg-kit-src
+        shell: bash
         run: |
+          trap 'tail -n 120 build.log' ERR
           echo "Starting FFmpeg Kit Android min build..."
           echo "NDK: $ANDROID_NDK_ROOT"
           echo "SDK: $ANDROID_SDK_ROOT"
           chmod +x android.sh
           ./android.sh 2>&1 | tee /tmp/build.log
           echo "Build complete"
+
+      - name: Preserve native and Gradle build diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: android-build-log-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ffmpeg-kit-src/build.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Locate and verify built AAR
         id: locate
