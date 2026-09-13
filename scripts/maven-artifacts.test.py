@@ -39,6 +39,19 @@ class ArtifactChecks(unittest.TestCase):
                 self.assertEqual(output.read_text(), f'version={expected}\n' if expected else '')
                 self.assertFalse((root / 'injected').exists())
 
+    def test_build_failure_keeps_diagnostics(self):
+        workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/build-16kb.yml').read_text()
+        step = workflow.split('      - name: Build ffmpeg-kit min variant\n', 1)[1].split('\n      - name:', 1)[0]
+        self.assertIn('        shell: bash\n', step)
+        script = textwrap.dedent(step.split('        run: |\n', 1)[1])
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / 'android.sh').write_text('#!/bin/bash\necho packaging-failed > build.log\nexit 7\n')
+            result = subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', script], cwd=root, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 7)
+            self.assertIn('packaging-failed', result.stdout)
+            self.assertNotIn('Build complete', result.stdout)
+
     def test_load_rows_and_metadata(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
