@@ -5,6 +5,7 @@ import hashlib
 from pathlib import Path
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -18,6 +19,12 @@ def verify_alignment(directory):
             raise ValueError(f'AAR has no {abi} libraries')
         libraries += abi_libraries
     for library in libraries:
+        with library.open('rb') as source:
+            header = source.read(64)
+        machine = {'arm64-v8a': 183, 'x86_64': 62}[library.parent.name]
+        if (len(header) < 64 or header[:7] != b'\x7fELF\x02\x01\x01' or
+                struct.unpack_from('<HH', header, 16) != (3, machine)):
+            raise ValueError(f'{library}: expected a 64-bit little-endian shared ELF for {library.parent.name}')
         output = subprocess.check_output(['readelf', '-lW', str(library)], text=True)
         loads = [line.split()[-1] for line in output.splitlines() if line.split()[:1] == ['LOAD']]
         if not loads or any(int(value, 16) < 16384 or int(value, 16) % 16384 for value in loads):

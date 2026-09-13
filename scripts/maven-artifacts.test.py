@@ -3,6 +3,7 @@ import hashlib
 import os
 from pathlib import Path
 import runpy
+import struct
 import subprocess
 import tempfile
 import textwrap
@@ -48,7 +49,18 @@ class ArtifactChecks(unittest.TestCase):
                 M['verify_alignment'](root)
             x86_library = root / 'jni/x86_64/libtest.so'
             x86_library.parent.mkdir(parents=True)
-            x86_library.touch()
+            def header(machine):
+                value = bytearray(64)
+                value[:7] = b'\x7fELF\x02\x01\x01'
+                struct.pack_into('<HH', value, 16, 3, machine)
+                return value
+            library.write_bytes(header(183))
+            x86_library.write_bytes(header(62))
+            for invalid in [b'', header(62), b'not an ELF' + bytes(64)]:
+                library.write_bytes(invalid)
+                with self.assertRaisesRegex(ValueError, 'shared ELF'):
+                    M['verify_alignment'](root)
+            library.write_bytes(header(183))
             with patch('subprocess.check_output', return_value='  Type Offset Align\n  LOAD 0x0 0x4000\n  LOAD 0x0 0x4000\n'):
                 M['verify_alignment'](root)
             for output in ['  Type Offset Align\n', '  LOAD 0x0 0x4000\n  LOAD 0x0 0x1000\n']:
