@@ -2,12 +2,15 @@
 """Validate ELF load segments and update local Maven metadata before publication."""
 import datetime as dt
 import hashlib
+import json
 from pathlib import Path
 import re
 import shutil
 import struct
 import subprocess
 import sys
+import tempfile
+import zipfile
 import xml.etree.ElementTree as ET
 
 
@@ -73,6 +76,42 @@ def update_metadata(directory, version):
         path.with_suffix(path.suffix + '.' + algorithm).write_text(hashlib.new(algorithm, path.read_bytes()).hexdigest() + '\n')
 
 
+def verify_candidate_contents(incoming, version):
+    stem = f'ffmpeg-kit-min-{version}'
+    pom = ET.parse(incoming / (stem + '.pom'))
+    ns = '{http://maven.apache.org/POM/4.0.0}'
+    for key, expected in [('groupId', 'com.arthenica'), ('artifactId', 'ffmpeg-kit-min'),
+                          ('version', version), ('packaging', 'aar')]:
+        if pom.findtext(ns + key) != expected:
+            raise ValueError(f'Unexpected POM {key}')
+    aar = incoming / (stem + '.aar')
+    module = json.loads((incoming / (stem + '.module')).read_text())
+    component = module['component']
+    if (module['formatVersion'] != '1.1' or
+            [component.get(key) for key in ['group', 'module', 'version']] !=
+            ['com.arthenica', 'ffmpeg-kit-min', version]):
+        raise ValueError('Unexpected Gradle module coordinates')
+    file_entry = {'name': aar.name, 'url': aar.name, 'size': aar.stat().st_size}
+    file_entry.update({key: hashlib.new(key, aar.read_bytes()).hexdigest()
+                       for key in ['md5', 'sha1', 'sha256', 'sha512']})
+    variants = module['variants']
+    if not variants or any(variant.get('files') != [file_entry] for variant in variants):
+        raise ValueError('Gradle variants must reference the verified local AAR')
+    with zipfile.ZipFile(aar) as archive, tempfile.TemporaryDirectory() as temporary:
+        names = archive.namelist()
+        if len(names) != len(set(names)) or archive.testzip() is not None:
+            raise ValueError('Corrupt or duplicate AAR entries')
+        if not {'AndroidManifest.xml', 'classes.jar'} <= set(names):
+            raise ValueError('AAR is missing its manifest or classes')
+        for name in names:
+            parts = name.split('/')
+            if len(parts) == 3 and parts[:2] in [['jni', 'arm64-v8a'], ['jni', 'x86_64']] and parts[2].endswith('.so'):
+                target = Path(temporary) / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(archive.read(name))
+        verify_alignment(temporary)
+
+
 def stage_artifacts(incoming, directory, version):
     release_key(version)
     incoming, directory = Path(incoming), Path(directory)
@@ -87,6 +126,7 @@ def stage_artifacts(incoming, directory, version):
         for algorithm in algorithms:
             if (incoming / (name + '.' + algorithm)).read_text().strip() != hashlib.new(algorithm, (incoming / name).read_bytes()).hexdigest():
                 raise ValueError(f'Candidate checksum mismatch: {name}.{algorithm}')
+    verify_candidate_contents(incoming, version)
     target = directory / version
     if target.exists():
         raise ValueError('Refusing to overwrite an existing Maven release')
@@ -99,9 +139,11 @@ def stage_artifacts(incoming, directory, version):
 if __name__ == '__main__':
     if len(sys.argv) == 3 and sys.argv[1] == 'verify':
         verify_alignment(sys.argv[2])
+    elif len(sys.argv) == 4 and sys.argv[1] == 'candidate':
+        verify_candidate_contents(Path(sys.argv[2]), sys.argv[3])
     elif len(sys.argv) == 4 and sys.argv[1] == 'metadata':
         update_metadata(sys.argv[2], sys.argv[3])
     elif len(sys.argv) == 5 and sys.argv[1] == 'stage':
         stage_artifacts(sys.argv[2], sys.argv[3], sys.argv[4])
     else:
-        sys.exit('Usage: maven-artifacts.py verify EXTRACTED_AAR | metadata ARTIFACT_DIRECTORY VERSION | stage INCOMING ARTIFACT_DIRECTORY VERSION')
+        sys.exit('Usage: maven-artifacts.py verify EXTRACTED_AAR | candidate INCOMING VERSION | metadata ARTIFACT_DIRECTORY VERSION | stage INCOMING ARTIFACT_DIRECTORY VERSION')

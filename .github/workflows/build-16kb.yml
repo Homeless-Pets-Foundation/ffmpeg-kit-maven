@@ -317,6 +317,9 @@ jobs:
           sha256sum "$MOD" | awk '{print $1}' > "$MOD.sha256"
           sha512sum "$MOD" | awk '{print $1}' > "$MOD.sha512"
 
+      - name: Verify candidate Maven contents
+        run: python3 maven-repo/scripts/maven-artifacts.py candidate "$ARTIFACT_DEST" "$ARTIFACT_VERSION"
+
       - name: List generated artifacts
         run: ls -lh "$ARTIFACT_DEST/"
 

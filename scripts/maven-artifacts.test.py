@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 import hashlib
+import json
+import io
+import zipfile
 import os
 from pathlib import Path
 import runpy
@@ -111,11 +114,28 @@ class ArtifactChecks(unittest.TestCase):
             incoming.mkdir()
             repository.mkdir()
             (repository / 'maven-metadata.xml').write_text('<metadata><groupId>com.arthenica</groupId><artifactId>ffmpeg-kit-min</artifactId><versioning><latest>6.0-3</latest><release>6.0-3</release><versions><version>6.0-3</version></versions></versioning></metadata>')
+            archive = io.BytesIO()
+            with zipfile.ZipFile(archive, 'w') as z:
+                z.writestr('AndroidManifest.xml', b'manifest')
+                z.writestr('classes.jar', b'classes')
+                for abi, machine in [('arm64-v8a', 183), ('x86_64', 62)]:
+                    header = bytearray(64)
+                    header[:7] = b'\x7fELF\x02\x01\x01'
+                    struct.pack_into('<HH', header, 16, 3, machine)
+                    z.writestr(f'jni/{abi}/libffmpegkit.so', header)
+            aar_bytes = archive.getvalue()
+            file_entry = {'name': 'ffmpeg-kit-min-6.0-4.aar', 'url': 'ffmpeg-kit-min-6.0-4.aar', 'size': len(aar_bytes)}
+            file_entry.update({key: hashlib.new(key, aar_bytes).hexdigest() for key in ['md5', 'sha1', 'sha256', 'sha512']})
+            contents = {
+                'aar': aar_bytes,
+                'pom': b'<project xmlns="http://maven.apache.org/POM/4.0.0"><groupId>com.arthenica</groupId><artifactId>ffmpeg-kit-min</artifactId><version>6.0-4</version><packaging>aar</packaging></project>',
+                'module': json.dumps({'formatVersion': '1.1', 'component': {'group': 'com.arthenica', 'module': 'ffmpeg-kit-min', 'version': '6.0-4'}, 'variants': [{'files': [file_entry]}]}).encode(),
+            }
             for extension in ['aar', 'pom', 'module']:
                 name = 'ffmpeg-kit-min-6.0-4.' + extension
-                (incoming / name).write_bytes(b'candidate bytes')
+                (incoming / name).write_bytes(contents[extension])
                 for algorithm in ['md5', 'sha1', 'sha256', 'sha512']:
-                    (incoming / (name + '.' + algorithm)).write_text(hashlib.new(algorithm, b'candidate bytes').hexdigest())
+                    (incoming / (name + '.' + algorithm)).write_text(hashlib.new(algorithm, contents[extension]).hexdigest())
             (incoming / '.git').mkdir()
             with self.assertRaises(ValueError):
                 M['stage_artifacts'](incoming, repository, '6.0-4')
@@ -130,10 +150,19 @@ class ArtifactChecks(unittest.TestCase):
             with self.assertRaises(ValueError):
                 M['stage_artifacts'](incoming, repository, '6.0-4')
             self.assertFalse((repository / '6.0-4').exists())
-            aar.write_bytes(b'candidate bytes')
-            M['stage_artifacts'](incoming, repository, '6.0-4')
+            aar.write_bytes(aar_bytes)
+            with patch('subprocess.check_output', return_value=' LOAD 0x0 0x0 0x0 0x1 0x1 R 0x4000'):
+                M['verify_candidate_contents'](incoming, '6.0-4')
+                for extension, bad in [('pom', contents['pom'].replace(b'6.0-4', b'6.0-5')),
+                                       ('module', contents['module'].replace(b'"url": "ffmpeg-kit-min-6.0-4.aar"', b'"url": "https://invalid.example/other.aar"'))]:
+                    path = incoming / ('ffmpeg-kit-min-6.0-4.' + extension)
+                    path.write_bytes(bad)
+                    with self.assertRaises(ValueError):
+                        M['verify_candidate_contents'](incoming, '6.0-4')
+                    path.write_bytes(contents[extension])
+                M['stage_artifacts'](incoming, repository, '6.0-4')
             self.assertEqual(ET.parse(repository / 'maven-metadata.xml').findtext('versioning/release'), '6.0-4')
-            with self.assertRaisesRegex(ValueError, 'overwrite'):
+            with patch('subprocess.check_output', return_value=' LOAD 0x0 0x0 0x0 0x1 0x1 R 0x4000'), self.assertRaisesRegex(ValueError, 'overwrite'):
                 M['stage_artifacts'](incoming, repository, '6.0-4')
 
 
