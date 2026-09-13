@@ -384,7 +384,7 @@ jobs:
           cat > "$RUNNER_TEMP/release-pr.md" <<'BODY'
           Prepared from the verified native build and validated Maven candidate.
 
-          Mark this draft ready for review to trigger Verify, then merge through normal protection to publish. GitHub suppresses pull_request events created with GITHUB_TOKEN, so this workflow deliberately leaves the release in draft. No Maven version is live until the PR merges.
+          Review this draft, approve its workflow runs when GitHub displays the approval banner, and mark it ready before merging through normal protection. GitHub requires approval for pull_request runs created with GITHUB_TOKEN. No Maven version is live until the PR merges.
           BODY
           gh pr create --draft --base main --head "$branch" \
             --title "Release ffmpeg-kit-min $BUILD_VERSION" --body-file "$RUNNER_TEMP/release-pr.md"
